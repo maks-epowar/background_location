@@ -297,13 +297,6 @@ class BackgroundLocationService : MethodChannel.MethodCallHandler,
                 context!!, Manifest.permission.FOREGROUND_SERVICE_LOCATION
             )
 
-            if (allowed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                Log.i(BackgroundLocationPlugin.TAG, "Check permission > Upside down cake")
-                allowed = PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
-                    context!!, Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                )
-            }
-
             return allowed
         } else {
             return PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
@@ -340,7 +333,6 @@ class BackgroundLocationService : MethodChannel.MethodCallHandler,
                     activity!!,
                     arrayOf(
                         Manifest.permission.FOREGROUND_SERVICE_LOCATION,
-                        Manifest.permission.ACCESS_BACKGROUND_LOCATION,
                         Manifest.permission.ACCESS_FINE_LOCATION,
                         Manifest.permission.POST_NOTIFICATIONS
                     ),
@@ -350,7 +342,6 @@ class BackgroundLocationService : MethodChannel.MethodCallHandler,
                 ActivityCompat.requestPermissions(
                     activity!!,
                     arrayOf(
-                        Manifest.permission.ACCESS_BACKGROUND_LOCATION,
                         Manifest.permission.ACCESS_FINE_LOCATION,
                         Manifest.permission.POST_NOTIFICATIONS
                     ),
@@ -360,7 +351,6 @@ class BackgroundLocationService : MethodChannel.MethodCallHandler,
                 ActivityCompat.requestPermissions(
                     activity!!,
                     arrayOf(
-                        Manifest.permission.ACCESS_BACKGROUND_LOCATION,
                         Manifest.permission.ACCESS_FINE_LOCATION
                     ),
                     REQUEST_PERMISSIONS_REQUEST_CODE
