@@ -3,9 +3,8 @@ import 'dart:developer';
 import 'dart:io' show Platform;
 import 'dart:ui';
 
-import 'package:flutter/services.dart';
-
 import 'package:background_location/background_callback.dart';
+import 'package:flutter/services.dart';
 
 typedef LocationCallback = void Function(List<Location> value);
 typedef OptLocationCallback = void Function(Location? value);
@@ -26,22 +25,24 @@ enum LocationPriority {
 class BackgroundLocation {
   // The channel to be used for communication.
   // This channel is also referenced inside both iOS and Abdroid classes
-  static final MethodChannel _channel = const MethodChannel('com.almoullim.background_location/methods')..setMethodCallHandler((MethodCall methodCall) async {
-    switch(methodCall.method) {
-      case 'location':
-        var locationData = methodCall.arguments as Map;
-        locationCallbackStream?.add(Location.fromJson(locationData));
-        break;
-      case 'notificationAction':
-        var callback = notificationActionCallback;
-        var response = methodCall.arguments as Map;
-        var location = response[argLocation] as Map;
-        if (callback != null) {
-          callback(Location.fromJson(location));
-        }
-        break;
-    }
-  });
+  static final MethodChannel _channel =
+      const MethodChannel('com.almoullim.background_location/methods')
+        ..setMethodCallHandler((MethodCall methodCall) async {
+          switch (methodCall.method) {
+            case 'location':
+              var locationData = methodCall.arguments as Map;
+              locationCallbackStream?.add(Location.fromJson(locationData));
+              break;
+            case 'notificationAction':
+              var callback = notificationActionCallback;
+              var response = methodCall.arguments as Map;
+              var location = response[argLocation] as Map;
+              if (callback != null) {
+                callback(Location.fromJson(location));
+              }
+              break;
+          }
+        });
 
   static StreamController<Location>? locationCallbackStream;
   static OptLocationCallback? notificationActionCallback;
@@ -70,7 +71,8 @@ class BackgroundLocation {
     var callbackHandle = 0;
     var locationCallback = 0;
     if (backgroundCallback != null) {
-      callbackHandle = PluginUtilities.getCallbackHandle(callbackHandler)!.toRawHandle();
+      callbackHandle =
+          PluginUtilities.getCallbackHandle(callbackHandler)!.toRawHandle();
       try {
         locationCallback =
             PluginUtilities.getCallbackHandle(backgroundCallback)!
@@ -93,33 +95,20 @@ class BackgroundLocation {
     });
   }
 
-
   static Future<dynamic> setAndroidNotification({
     String? channelID,
     String? title,
     String? message,
     String? icon,
-    String? actionText,
-    OptLocationCallback? actionCallback,
+    Color? color,
   }) async {
     if (Platform.isAndroid) {
-      var callback = 0;
-      notificationActionCallback = actionCallback;
-      if (actionCallback != null) {
-        try {
-          callback = PluginUtilities.getCallbackHandle(actionCallback)?.toRawHandle() ?? 0;
-        } catch (ex, stack) {
-          log('Error getting callback handle', error: ex, stackTrace: stack);
-        }
-      }
-
       var data = <String, dynamic>{
         'channelID': channelID,
         'title': title,
         'message': message,
         'icon': icon,
-        'actionText': actionText,
-        'actionCallback': callback,
+        'color': color?.value,
       };
 
       try {
@@ -127,9 +116,9 @@ class BackgroundLocation {
       } catch (ex, stack) {
         log('Error setting notification', error: ex, stackTrace: stack);
 
-        return await const MethodChannel(backgroundChannelID).invokeMethod('set_android_notification', data);
+        return await const MethodChannel(backgroundChannelID)
+            .invokeMethod('set_android_notification', data);
       }
-
     } else {
       //return Promise.resolve();
     }
@@ -154,7 +143,8 @@ class BackgroundLocation {
 
   /// Register a function to receive location updates as long as the location
   /// service has started
-  static StreamController<Location>? getLocationUpdates(void Function(Location) location) {
+  static StreamController<Location>? getLocationUpdates(
+      void Function(Location) location) {
     if (locationCallbackStream?.isClosed == false) {
       locationCallbackStream?.close();
     }
@@ -188,7 +178,8 @@ class Location {
   });
 
   factory Location.fromJson(Map<dynamic, dynamic> json) {
-    bool isLocationMocked = Platform.isAndroid ? json['is_mock'] as bool : false;
+    bool isLocationMocked =
+        Platform.isAndroid ? json['is_mock'] as bool : false;
     return Location(
       latitude: json['latitude'] as double,
       longitude: json['longitude'] as double,

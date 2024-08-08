@@ -166,16 +166,14 @@ class BackgroundLocationService : MethodChannel.MethodCallHandler,
         title: String?,
         message: String?,
         icon: String?,
-        actionText: String?,
-        callback: Long,
+        color: Int?,
     ): Int {
         if (channelID != null) LocationUpdatesService.NOTIFICATION_CHANNEL_ID = channelID
         if (title != null) LocationUpdatesService.NOTIFICATION_TITLE = title
         if (message != null) LocationUpdatesService.NOTIFICATION_MESSAGE = message
         if (icon != null) LocationUpdatesService.NOTIFICATION_ICON = icon
-        if (actionText != null) {
-            LocationUpdatesService.NOTIFICATION_ACTION = actionText
-            LocationUpdatesService.NOTIFICATION_ACTION_CALLBACK = callback
+        if (color != null) {
+            LocationUpdatesService.NOTIFICATION_COLOR = color
         }
 
         if (service != null) {
@@ -242,12 +240,7 @@ class BackgroundLocationService : MethodChannel.MethodCallHandler,
                 val notificationTitle: String? = call.argument("title")
                 val notificationMessage: String? = call.argument("message")
                 val notificationIcon: String? = call.argument("icon")
-                val actionText: String? = call.argument("actionText")
-                var callback: Long = 0L
-                try {
-                    callback = call.argument("actionCallback") ?: 0L
-                } catch (ex: Throwable) {
-                }
+                val colorObject: Any? = call.argument("color")
 
                 result.success(
                     setAndroidNotification(
@@ -255,8 +248,7 @@ class BackgroundLocationService : MethodChannel.MethodCallHandler,
                         notificationTitle,
                         notificationMessage,
                         notificationIcon,
-                        actionText,
-                        callback,
+                        (colorObject as Number).toInt()
                     )
                 )
             }

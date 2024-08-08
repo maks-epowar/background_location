@@ -71,8 +71,7 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
         var NOTIFICATION_TITLE = "Background service is running"
         var NOTIFICATION_MESSAGE = "Background service is running"
         var NOTIFICATION_ICON = "@mipmap/ic_launcher"
-        var NOTIFICATION_ACTION: String? = null
-        var NOTIFICATION_ACTION_CALLBACK: Long? = null
+        var NOTIFICATION_COLOR: Int? = null
 
         val ACTION_START_FOREGROUND_SERVICE = "ACTION_START_FOREGROUND_SERVICE"
         val ACTION_STOP_FOREGROUND_SERVICE = "ACTION_STOP_FOREGROUND_SERVICE"
@@ -137,9 +136,17 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
             )
 
             val builder = NotificationCompat.Builder(this, "BackgroundLocation")
-                .setContentTitle(NOTIFICATION_TITLE).setOngoing(true).setSound(null)
-                .setPriority(NotificationCompat.PRIORITY_HIGH).setWhen(System.currentTimeMillis())
-                .setStyle(NotificationCompat.BigTextStyle().bigText(NOTIFICATION_MESSAGE))
+                .setContentTitle(NOTIFICATION_TITLE)
+                .setContentText(NOTIFICATION_MESSAGE)
+                .setOngoing(true)
+                .setSound(null)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setOnlyAlertOnce(true)
+                .setAutoCancel(false)
+                .setWhen(System.currentTimeMillis())
                 .setContentIntent(pendingIntent)
 
             try {
@@ -166,6 +173,12 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
                         )
                     )
                 }
+
+                NOTIFICATION_COLOR?.let {
+                    if (it != 0) {
+                        builder.setColor(it)
+                    }
+                }
             } catch (tr: Throwable) {
                 Log.w(TAG, "Unable to set small notification icon", tr)
                 builder.setSmallIcon(
@@ -175,22 +188,6 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
                         packageName
                     )
                 )
-            }
-
-            if (NOTIFICATION_ACTION?.isNotEmpty() == true && NOTIFICATION_ACTION_CALLBACK != null) {
-                val actionIntent = Intent(this, LocationUpdatesService::class.java)
-                actionIntent.putExtra("ARG_CALLBACK", NOTIFICATION_ACTION_CALLBACK ?: 0L)
-                actionIntent.action = ACTION_NOTIFICATION_ACTIONED
-
-                val action = NotificationCompat.Action.Builder(
-                    0, NOTIFICATION_ACTION!!, PendingIntent.getService(
-                        this,
-                        0,
-                        actionIntent,
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                    )
-                ).build()
-                builder.addAction(action)
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -251,10 +248,7 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
                     ?: NOTIFICATION_MESSAGE
                 NOTIFICATION_ICON =
                     pref.getString("NOTIFICATION_ICON", NOTIFICATION_ICON) ?: NOTIFICATION_ICON
-                NOTIFICATION_ACTION =
-                    pref.getString("NOTIFICATION_ACTION", NOTIFICATION_ACTION ?: "")
-                NOTIFICATION_ACTION_CALLBACK =
-                    pref.getLong("NOTIFICATION_ACTION_CALLBACK", NOTIFICATION_ACTION_CALLBACK ?: 0L)
+                NOTIFICATION_COLOR = pref.getInt("NOTIFICATION_COLOR", NOTIFICATION_COLOR ?: 0)
                 triggerForegroundServiceStart(intent)
             }
 
@@ -318,8 +312,7 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
         edit.putString("NOTIFICATION_TITLE", NOTIFICATION_TITLE)
         edit.putString("NOTIFICATION_MESSAGE", NOTIFICATION_MESSAGE)
         edit.putString("NOTIFICATION_ICON", NOTIFICATION_ICON)
-        edit.putString("NOTIFICATION_ACTION", NOTIFICATION_ACTION ?: "")
-        edit.putLong("NOTIFICATION_ACTION_CALLBACK", NOTIFICATION_ACTION_CALLBACK ?: 0L)
+        edit.putInt("NOTIFICATION_COLOR", NOTIFICATION_COLOR ?: 0)
         edit.commit()
 
         val googleAPIAvailability =
@@ -430,8 +423,7 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
         edit.remove("NOTIFICATION_TITLE")
         edit.remove("NOTIFICATION_MESSAGE")
         edit.remove("NOTIFICATION_ICON")
-        edit.remove("NOTIFICATION_ACTION")
-        edit.remove("NOTIFICATION_ACTION_CALLBACK")
+        edit.remove("NOTIFICATION_COLOR")
         edit.commit()
         stopForeground(true)
         stopSelf()
@@ -597,20 +589,14 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
                 val notificationTitle: String? = call.argument("title")
                 val notificationMessage: String? = call.argument("message")
                 val notificationIcon: String? = call.argument("icon")
-                val actionText: String? = call.argument("actionText")
-                var callback: Long = 0L
-                try {
-                    callback = call.argument("actionCallback") ?: 0L
-                } catch (ex: Throwable) {
-                }
+                val color: Int? = call.argument("color")
 
-                if (channelID != null) LocationUpdatesService.NOTIFICATION_CHANNEL_ID = channelID
-                if (notificationTitle != null) LocationUpdatesService.NOTIFICATION_TITLE = notificationTitle
-                if (notificationMessage != null) LocationUpdatesService.NOTIFICATION_MESSAGE = notificationMessage
-                if (notificationIcon != null) LocationUpdatesService.NOTIFICATION_ICON = notificationIcon
-                if (actionText != null) {
-                    LocationUpdatesService.NOTIFICATION_ACTION = actionText
-                    LocationUpdatesService.NOTIFICATION_ACTION_CALLBACK = callback
+                if (channelID != null) NOTIFICATION_CHANNEL_ID = channelID
+                if (notificationTitle != null) NOTIFICATION_TITLE = notificationTitle
+                if (notificationMessage != null) NOTIFICATION_MESSAGE = notificationMessage
+                if (notificationIcon != null) NOTIFICATION_ICON = notificationIcon
+                if (color != null) {
+                    NOTIFICATION_COLOR = color
                 }
 
                 updateNotification()
