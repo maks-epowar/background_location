@@ -49,18 +49,6 @@ class _MyAppState extends State<MyApp> {
                       title: 'Background service is running',
                       message: 'Background location in progress',
                       icon: '@mipmap/ic_launcher',
-                      actionText: "Test",
-                      actionCallback: (value) {
-                        log('''Notification callback: \n 
-                          Latitude:  ${value?.latitude}
-                          Longitude: ${value?.longitude}
-                          Altitude: ${value?.altitude}
-                          Accuracy: ${value?.accuracy}
-                          Bearing:  ${value?.bearing}
-                          Speed: ${value?.speed}
-                          Time: ${value?.time}
-                        ''');
-                      },
                     );
                     //await BackgroundLocation.setAndroidConfiguration(1000);
                     await BackgroundLocation.startLocationService(
