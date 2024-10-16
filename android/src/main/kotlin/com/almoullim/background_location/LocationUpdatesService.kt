@@ -34,7 +34,7 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
                 ?: UPDATE_INTERVAL_IN_MILLISECONDS
         FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS =
             intent?.getLongExtra("fastest_interval", UPDATE_INTERVAL_IN_MILLISECONDS / 2)
-                ?: UPDATE_INTERVAL_IN_MILLISECONDS / 2
+                ?: (UPDATE_INTERVAL_IN_MILLISECONDS / 2)
 
         val priority = intent?.getIntExtra("priority", 0) ?: 0
         val distanceFilter = intent?.getDoubleExtra("distance_filter", 0.0) ?: 0.0
@@ -108,10 +108,10 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
             // Resources protected from obfuscation
             // https://developer.android.com/studio/build/shrink-code#strict-reference-checks
             val name: String = String.format("res_%1s", label)
-            resId = context.getResources().getIdentifier(name, type, context.getPackageName())
+            resId = context.resources.getIdentifier(name, type, context.packageName)
             Log.w(TAG, "Getting resource: $name - $resId")
             if (resId == 0) {
-                resId = context.getResources().getIdentifier(label, type, context.getPackageName())
+                resId = context.resources.getIdentifier(label, type, context.packageName)
             }
             return resId
         } catch (e: Exception) {
@@ -261,19 +261,17 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
     fun triggerForegroundServiceStart(intent: Intent) {
         FlutterInjector.instance().flutterLoader().ensureInitializationComplete(this, null)
         UPDATE_INTERVAL_IN_MILLISECONDS =
-            intent?.getLongExtra("interval", UPDATE_INTERVAL_IN_MILLISECONDS)
-                ?: UPDATE_INTERVAL_IN_MILLISECONDS
+            intent.getLongExtra("interval", UPDATE_INTERVAL_IN_MILLISECONDS)
         FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS =
-            intent?.getLongExtra("fastest_interval", UPDATE_INTERVAL_IN_MILLISECONDS / 2)
-                ?: UPDATE_INTERVAL_IN_MILLISECONDS / 2
+            intent.getLongExtra("fastest_interval", UPDATE_INTERVAL_IN_MILLISECONDS / 2)
 
         val startOnBoot = intent.getBooleanExtra("startOnBoot", false)
-        val priority = intent.getIntExtra("priority", 0) ?: 0
-        val distanceFilter = intent.getDoubleExtra("distance_filter", 0.0) ?: 0.0
+        val priority = intent.getIntExtra("priority", 0)
+        val distanceFilter = intent.getDoubleExtra("distance_filter", 0.0)
         createLocationRequest(priority, distanceFilter)
-        setLocationCallback(intent.getLongExtra("locationCallback", 0L) ?: 0L)
+        setLocationCallback(intent.getLongExtra("locationCallback", 0L))
 
-        val callbackHandle = intent.getLongExtra("callbackHandle", 0L) ?: 0L
+        val callbackHandle = intent.getLongExtra("callbackHandle", 0L)
         if (callbackHandle != 0L && backgroundEngine == null) {
             Log.i("LocationService", "creating background engine $callbackHandle")
             val callbackInfo = FlutterCallbackInformation.lookupCallbackInformation(callbackHandle)
@@ -313,7 +311,7 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
         edit.putString("NOTIFICATION_MESSAGE", NOTIFICATION_MESSAGE)
         edit.putString("NOTIFICATION_ICON", NOTIFICATION_ICON)
         edit.putInt("NOTIFICATION_COLOR", NOTIFICATION_COLOR ?: 0)
-        edit.commit()
+        edit.apply()
 
         val googleAPIAvailability =
             GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(applicationContext)
@@ -424,8 +422,12 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
         edit.remove("NOTIFICATION_MESSAGE")
         edit.remove("NOTIFICATION_ICON")
         edit.remove("NOTIFICATION_COLOR")
-        edit.commit()
-        stopForeground(true)
+        edit.apply()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_DETACH)
+        } else {
+            stopForeground(true)
+        }
         stopSelf()
     }
 
@@ -441,6 +443,7 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
                 mLocation = mLocationManager!!.getLastKnownLocation(LocationManager.GPS_PROVIDER)
             }
         } catch (unlikely: SecurityException) {
+            Log.w(TAG, unlikely.toString())
         }
     }
 
@@ -503,18 +506,18 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
             locationMap["bearing"] = location.bearing.toDouble()
             locationMap["speed"] = location.speed.toDouble()
             locationMap["time"] = location.time.toDouble()
-            locationMap["is_mock"] = location.isFromMockProvider
+            locationMap["is_mock"] = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) location.isMock else location.isFromMockProvider
         }
 
         val result: HashMap<Any, Any> = hashMapOf(
             "ARG_LOCATION" to locationMap, "ARG_CALLBACK" to callback
         )
 
-        val intent = Intent(ACTION_BROADCAST)
-        intent.putExtra(ACTION_BROADCAST_TYPE, ACTION_NOTIFICATION_ACTIONED)
-        intent.putExtra(EXTRA_LOCATION, location)
-        intent.putExtra(EXTRA_ACTION_CALLBACK, callback)
-        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(intent)
+        val notificationIntent = Intent(ACTION_BROADCAST)
+        notificationIntent.putExtra(ACTION_BROADCAST_TYPE, ACTION_NOTIFICATION_ACTIONED)
+        notificationIntent.putExtra(EXTRA_LOCATION, location)
+        notificationIntent.putExtra(EXTRA_ACTION_CALLBACK, callback)
+        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(notificationIntent)
 
         Looper.getMainLooper()?.let {
             Handler(it).post {
@@ -529,16 +532,18 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
 
 
     private fun createLocationRequest(priority: Int, distanceFilter: Double) {
-        mLocationRequest = LocationRequest()
-        mLocationRequest!!.interval = UPDATE_INTERVAL_IN_MILLISECONDS
-        mLocationRequest!!.fastestInterval = FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS
-        if (priority == 0) mLocationRequest!!.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-        if (priority == 1) mLocationRequest!!.priority =
-            LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY
-        if (priority == 2) mLocationRequest!!.priority = LocationRequest.PRIORITY_LOW_POWER
-        if (priority == 3) mLocationRequest!!.priority = LocationRequest.PRIORITY_NO_POWER
-        mLocationRequest!!.smallestDisplacement = distanceFilter.toFloat()
-        mLocationRequest?.maxWaitTime = UPDATE_INTERVAL_IN_MILLISECONDS
+        val requestPriority = when(priority) {
+            0 -> Priority.PRIORITY_HIGH_ACCURACY
+            1 -> Priority.PRIORITY_BALANCED_POWER_ACCURACY
+            2 -> Priority.PRIORITY_LOW_POWER
+            else -> Priority.PRIORITY_PASSIVE
+        }
+        mLocationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, UPDATE_INTERVAL_IN_MILLISECONDS)
+            .setPriority(requestPriority)
+            .setMinUpdateIntervalMillis(FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS)
+            .setMinUpdateDistanceMeters(distanceFilter.toFloat())
+            .setMaxUpdateDelayMillis(UPDATE_INTERVAL_IN_MILLISECONDS)
+            .build()
     }
 
 

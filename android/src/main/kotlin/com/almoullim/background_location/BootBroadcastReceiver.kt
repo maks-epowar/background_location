@@ -10,7 +10,9 @@ import java.util.prefs.Preferences
 import androidx.core.content.ContextCompat
 
 class BootBroadcastReceiver : BroadcastReceiver() {
-    private val TAG = BootBroadcastReceiver::class.java.simpleName
+    companion object {
+        private val TAG = BootBroadcastReceiver::class.java.simpleName
+    }
 
     override fun onReceive(context: Context, intent: Intent) {
         Log.i(TAG, "BOOT detected: ${intent.action}")
