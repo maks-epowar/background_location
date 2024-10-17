@@ -98,7 +98,7 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
         private const val STOP_SERVICE = "stop_service"
     }
 
-    fun getDrawableResourceId(context: Context, bitmapReference: String): Int {
+    private fun getDrawableResourceId(context: Context, bitmapReference: String): Int {
         val reference: Array<String> = bitmapReference.split("/").toTypedArray()
         try {
             var resId: Int
@@ -258,7 +258,7 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
         return START_STICKY
     }
 
-    fun triggerForegroundServiceStart(intent: Intent) {
+    private fun triggerForegroundServiceStart(intent: Intent) {
         FlutterInjector.instance().flutterLoader().ensureInitializationComplete(this, null)
         UPDATE_INTERVAL_IN_MILLISECONDS =
             intent.getLongExtra("interval", UPDATE_INTERVAL_IN_MILLISECONDS)
@@ -424,7 +424,7 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
         edit.remove("NOTIFICATION_COLOR")
         edit.apply()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_DETACH)
+            stopForeground(STOP_FOREGROUND_REMOVE)
         } else {
             stopForeground(true)
         }

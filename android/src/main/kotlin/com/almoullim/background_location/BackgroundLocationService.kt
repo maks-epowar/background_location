@@ -180,7 +180,7 @@ class BackgroundLocationService : MethodChannel.MethodCallHandler,
                 ctx.unbindService(serviceConnection)
                 bound = false
             }
-        } ?: return -1
+        }
 
         return 0
     }
