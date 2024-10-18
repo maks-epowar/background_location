@@ -86,8 +86,8 @@ class BackgroundLocationService : MethodChannel.MethodCallHandler,
     }
 
     fun onDetachedFromEngine() {
-        receiver?.let {
-            LocalBroadcastManager.getInstance(context!!).unregisterReceiver(it)
+        receiver?.let { r ->
+            context?.let { c -> LocalBroadcastManager.getInstance(c).unregisterReceiver(r) }
         }
         receiver = null
         channel.setMethodCallHandler(null)

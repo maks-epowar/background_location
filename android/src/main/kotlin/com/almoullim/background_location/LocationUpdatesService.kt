@@ -289,9 +289,9 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
         } else  {
             Log.i("LocationService", "Skipping background engine $callbackHandle - $backgroundEngine")
         }
-        if (backgroundEngine != null && backgroundEngine?.dartExecutor != null) {
+        backgroundEngine?.dartExecutor?.let {
             backgroundChannel = MethodChannel(
-                backgroundEngine!!.dartExecutor.binaryMessenger,
+                it.binaryMessenger,
                 "com.almoullim.background_location/background"
             )
         }
@@ -357,7 +357,7 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
                 NotificationManager.IMPORTANCE_DEFAULT
             )
             mChannel.setSound(null, null)
-            mNotificationManager!!.createNotificationChannel(mChannel)
+            mNotificationManager?.createNotificationChannel(mChannel)
         }
 
         ServiceCompat.startForeground(this, NOTIFICATION_ID, notification.build(),
@@ -374,16 +374,22 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
         Utils.setRequestingLocationUpdates(this, true)
         try {
             if (isGoogleApiAvailable && !this.forceLocationManager) {
-                mFusedLocationClient!!.requestLocationUpdates(
-                    mLocationRequest!!, mFusedLocationCallback!!, Looper.myLooper()
-                )
+                mLocationRequest?.let { reqest->
+                    mFusedLocationCallback?.let { callback ->
+                        mFusedLocationClient?.requestLocationUpdates(
+                            reqest, callback, Looper.myLooper()
+                        )
+                    }
+                }
             } else {
-                mLocationManager?.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER,
-                    0L,
-                    0f,
-                    mLocationManagerCallback!!
-                )
+                mLocationManagerCallback?.let {
+                    mLocationManager?.requestLocationUpdates(
+                        LocationManager.GPS_PROVIDER,
+                        0L,
+                        0f,
+                        it
+                    )
+                }
             }
         } catch (unlikely: SecurityException) {
             Utils.setRequestingLocationUpdates(this, false)
@@ -434,13 +440,13 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
     private fun getLastLocation() {
         try {
             if (isGoogleApiAvailable && !this.forceLocationManager) {
-                mFusedLocationClient!!.lastLocation.addOnCompleteListener { task ->
+                mFusedLocationClient?.lastLocation?.addOnCompleteListener { task ->
                         if (task.isSuccessful && task.result != null) {
                             onNewLocation(task.result)
                         }
                     }
             } else {
-                mLocation = mLocationManager!!.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                mLocation = mLocationManager?.getLastKnownLocation(LocationManager.GPS_PROVIDER)
             }
         } catch (unlikely: SecurityException) {
             Log.w(TAG, unlikely.toString())
@@ -559,13 +565,13 @@ class LocationUpdatesService : Service(), MethodChannel.MethodCallHandler {
         LocalBroadcastManager.getInstance(applicationContext).unregisterReceiver(actionReceiver)
         try {
             if (isGoogleApiAvailable && !this.forceLocationManager) {
-                mFusedLocationClient!!.removeLocationUpdates(mFusedLocationCallback!!)
+                mFusedLocationCallback?.let { mFusedLocationClient?.removeLocationUpdates(it) }
             } else {
-                mLocationManager!!.removeUpdates(mLocationManagerCallback!!)
+                mLocationManagerCallback?.let { mLocationManager?.removeUpdates(it) }
             }
 
             Utils.setRequestingLocationUpdates(this, false)
-            mNotificationManager!!.cancel(NOTIFICATION_ID)
+            mNotificationManager?.cancel(NOTIFICATION_ID)
         } catch (unlikely: SecurityException) {
             Utils.setRequestingLocationUpdates(this, true)
         }
